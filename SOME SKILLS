@@ -1,0 +1,95 @@
+-----分隔符
+  split(area, ',')[0] as province, --省份
+
+----一串字符行转列（字符间以%2C分隔）
+select 
+DISTINCT
+dynamic_id,
+itemid
+from  ods.live_dynamic_appevent
+LATERAL VIEW explode(SPLIT(args1, '%2C')) args1 as itemid
+where log_date='<%=log_date%>'
+and event_id in ('item_show','item_click')
+
+-----上传文件建表
+CREATE EXTERNAL TABLE `tmp.gaoweiuser`(
+`mid` int
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+LOCATION
+'/department/main/file/hdfsfile/gaoweiuser.csv/'
+
+-----转时间
+from_unixtime(unix_timestamp(log_date,'yyyyMMdd'),'yyyyMMdd')
+
+
+----分布大法好！！！
+1、create table tmp.oywg_20190419_live_zhubo as 
+select
+	t.*,row_number() over(partition by 1 order by pay_coin desc) as rn
+  from
+(
+select 
+       ruid
+       ,sum(pay_coin)/1000 as pay_coin
+from  
+	bili_live.gift_stream_all
+where 
+	log_date>='20190101' and log_date<='20190331'
+ 	and coin_type=1
+  group by ruid
+  ) t
+
+
+2、SELECT
+type,
+max(rn)
+from 
+(
+SELECT
+	CASE
+    	when fee_1/136397743<=0.1 then '10'
+        when fee_1/136397743<=0.2 then '20'
+        when fee_1/136397743<=0.3 then '30'
+        when fee_1/136397743<=0.4 then '40'
+        when fee_1/136397743<=0.5 then '50'
+        when fee_1/136397743<=0.6 then '60'
+        when fee_1/136397743<=0.7 then '70'
+        when fee_1/136397743<=0.8 then '80'
+        when fee_1/136397743<=0.9 then '90'
+        when fee_1/136397743<=0.95 then '95'
+        else '100'
+     end as type
+     ,rn
+from
+(SELECT
+	*
+    ,sum(pay_coin) over (partition by 1 order by rn desc) as fee_1
+FROM
+	tmp.oywg_20190419_live_zhubo
+) t
+group BY
+	CASE
+    	when fee_1/136397743<=0.1 then '10'
+        when fee_1/136397743<=0.2 then '20'
+        when fee_1/136397743<=0.3 then '30'
+        when fee_1/136397743<=0.4 then '40'
+        when fee_1/136397743<=0.5 then '50'
+        when fee_1/136397743<=0.6 then '60'
+        when fee_1/136397743<=0.7 then '70'
+        when fee_1/136397743<=0.8 then '80'
+        when fee_1/136397743<=0.9 then '90'
+        when fee_1/136397743<=0.95 then '95'
+        else '100'
+     end,rn
+  )a 
+  group by type
+
+
+-----lag
+lag(ctime,1,'1970-01-01 00:00:00') over (partition by uid order by ctime )
+
+
+----grouping sets
